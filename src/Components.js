@@ -45,6 +45,9 @@ const useCameraDevices = () => {
       .then(devices =>
         setDevices(devices)
       )
+      .catch(err =>
+        console.log(err)
+      )
   }, [])
 
   return devices
@@ -73,9 +76,10 @@ const useCamera = device => {
           video.srcObject = stream
           setVideo(video)
         })
-        .catch(err =>
+        .catch(err => {
+          alert('Camera not found')
           console.log(err)
-        )
+        })
     }
   }, [videoRef, device])
 
