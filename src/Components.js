@@ -74,7 +74,7 @@ const useCamera = device => {
           setVideo(video)
         })
         .catch(err =>
-          alert(err)
+          console.log(err)
         )
     }
   }, [videoRef, device])

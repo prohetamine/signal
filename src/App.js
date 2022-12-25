@@ -334,7 +334,7 @@ const App = () => {
       }
       <LogoWrapper>
         <Logo />
-        <GitHubLink>GitHub</GitHubLink>
+        <GitHubLink href='https://github.com/prohetamine/signal'>GitHub</GitHubLink>
       </LogoWrapper>
       <PanelsWrapper>
         <Panel style={{ marginLeft: '0px' }}>
