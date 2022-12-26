@@ -9,11 +9,11 @@ import SignalsEmulate from './SignalsEmulate'
 
 const router = createBrowserRouter([
   {
-    path: '/',
+    path: '*',
     element: <Main />
   },
   {
-    path: '/signalEmulate',
+    path: '/signal/signalEmulate',
     element: <SignalsEmulate />
   }
 ]);
