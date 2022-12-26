@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react'
-import { Hands } from '@mediapipe/hands'
 import { drawConnectors } from '@mediapipe/drawing_utils'
 import styled from 'styled-components'
 import arrow from './assets/arrow.svg'
@@ -9,106 +8,8 @@ import remove from './assets/remove.svg'
 import notFoundCamera from './assets/not-found-camera.svg'
 import logo from './assets/logo.svg'
 
-const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]]
-
-const useCanvas = ({ width, height }) => {
-  const canvasRef = useRef()
-      , [ctx, setCtx] = useState(null)
-      , [canvas, setCanvas] = useState(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-
-    if (canvas) {
-      canvas.width = width
-      canvas.height = height
-
-      const ctx = canvas.getContext('2d')
-      setCtx(ctx)
-      setCanvas(canvas)
-    }
-
-  }, [canvasRef, width, height])
-
-  return [canvasRef, ctx, canvas]
-}
-
-const useCameraDevices = () => {
-  const [devices, setDevices] = useState([])
-
-  useEffect(() => {
-    navigator.mediaDevices.enumerateDevices()
-      .then(
-        devices =>
-          devices.filter(device => device.kind === 'videoinput')
-      )
-      .then(devices =>
-        setDevices(devices)
-      )
-      .catch(err =>
-        console.log(err)
-      )
-  }, [])
-
-  return devices
-}
-
-const useCamera = device => {
-  const videoRef = useRef()
-      , [video, setVideo] = useState(null)
-
-  useEffect(() => {
-    const video = videoRef.current
-
-    if (video && device) {
-      const constraints = {
-        width: 1280,
-        height: 720,
-        deviceId: { exact: device.deviceId }
-      }
-
-      navigator.mediaDevices.getUserMedia({ video: constraints })
-        .then(stream => {
-          if (video.srcObject) {
-            video.srcObject.getTracks().forEach(track => track.stop())
-            video.srcObject = null
-          }
-          video.srcObject = stream
-          setVideo(video)
-        })
-        .catch(err => {
-          alert('Camera not found')
-          console.log(err)
-        })
-    }
-  }, [videoRef, device])
-
-  return [videoRef, video]
-}
-
-const useHands = obj => {
-  const [hands, setHands] = useState(null)
-
-  useEffect(() => {
-    const hands = new Hands({
-      locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    })
-
-    hands.setOptions(obj)
-    setHands(hands)
-  }, [])
-
-  return hands
-}
-
-const str2ab = str => {
-  const buf = new ArrayBuffer(str.length*2)
-  let bufView = new Uint8Array(buf)
-  for (let i = 0, strLen = str.length; i < strLen; i++) {
-    bufView[i] = str.charCodeAt(i)
-  }
-  return buf
-}
+import { useCanvas } from './Hooks'
+import { HAND_CONNECTIONS } from './Libs'
 
 const PredictWrapper = styled.div`
   position: absolute;
@@ -406,7 +307,7 @@ const SignalsStorageWrapper = styled.div`
   flex-wrap: wrap;
 `
 
-const SignalsSimulateWrapper = styled.div`
+const SignalsEmulateWrapper = styled.div`
   display: flex;
   flex-wrap: wrap;
 `
@@ -743,7 +644,7 @@ export {
   VideoWrapper,
   Select,
   SignalsStorageWrapper,
-  SignalsSimulateWrapper,
+  SignalsEmulateWrapper,
   SignalCard,
   SignalCardGhost,
   PredictWrapper,
@@ -751,11 +652,5 @@ export {
   OverflowMainSettings,
   MainSettings,
   LoadConfigCard,
-  DownloadConfigCard,
-  useCameraDevices,
-  useCamera,
-  useCanvas,
-  useHands,
-  HAND_CONNECTIONS,
-  str2ab
+  DownloadConfigCard
 }

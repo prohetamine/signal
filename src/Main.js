@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { drawConnectors } from '@mediapipe/drawing_utils'
+import { useState } from 'react'
 import useLocalStorage from 'use-local-storage'
 
 import {
@@ -17,7 +16,7 @@ import {
   Select,
   VideoWrapper,
   SignalsStorageWrapper,
-  SignalsSimulateWrapper,
+  SignalsEmulateWrapper,
   SignalCard,
   SignalCardGhost,
   PredictWrapper,
@@ -25,16 +24,19 @@ import {
   OverflowMainSettings,
   MainSettings,
   LoadConfigCard,
-  DownloadConfigCard,
+  DownloadConfigCard
+} from './Components.js'
+
+import {
   useCameraDevices,
   useCamera,
   useCanvas,
-  useHands,
-  str2ab,
-  HAND_CONNECTIONS
-} from './Components.js'
+  useBle,
+  useControllBleDevice,
+  useMainHook
+} from './Hooks'
 
-const App = () => {
+const _Main = () => {
   const camDevices = useCameraDevices()
 
   const [signalName, setSignalName] = useState('')
@@ -54,10 +56,20 @@ const App = () => {
       , [lernTruePredict, setLernTruePredict] = useLocalStorage('lern-true-predict', '')
       , [truePredict, setTruePredict] = useLocalStorage('true-predict', '')
       , [camDevice, setCamDevice] = useLocalStorage('use-device', 0)
-      , [ble, setBle] = useState(null)
       , [loadFilename, setLoadFilename] = useState('signals-config.json')
       , [serviceBleDevice, setServiceBleDevice] = useLocalStorage('service-ble-device', '')
       , [characteristicBleDevice, setCharacteristicBleDevice] = useLocalStorage('characteristic-ble-device', '')
+
+  const ble = useBle({
+    service: serviceBleDevice,
+    characteristic: characteristicBleDevice
+  })
+
+  useControllBleDevice({
+    ble,
+    signalEmulate,
+    signalPredict
+  })
 
   const [videoRef, video] = useCamera(camDevices[camDevice])
 
@@ -66,172 +78,24 @@ const App = () => {
     height: 720 / 2
   })
 
-  const hands = useHands({
-    maxNumHands: 2,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.8,
-    minTrackingConfidence: 0.8
+  useMainHook({
+    video,
+    camDevice,
+    ctx,
+    canvas,
+    setSignals,
+    setSignalPredict,
+    setSelectSignal,
+    isLernSignal,
+    selectSignal,
+    signals,
+    isRecordSignal,
+    maxOffsetX,
+    maxOffsetY,
+    maxOffsetZ,
+    lernTruePredict,
+    truePredict
   })
-
-  const predictString = Object.keys(signalPredict)
-    .map(key => `${key}:${signalPredict[key]}`).join(',')+','
-
-  const predictEmulate = Object.keys(signalEmulate)
-    .map(key => `${key}:${signalEmulate[key]}`).join(',')+','
-
-  useEffect(() => {
-    if (ble) {
-      const timeId = setTimeout(() => {
-        const data = str2ab(predictString)
-        ble.characteristic.writeValue(data)
-      }, 100)
-
-      return () => clearTimeout(timeId)
-    }
-  }, [ble, predictString])
-
-  useEffect(() => {
-    if (ble) {
-      const timeId = setTimeout(() => {
-        const data = str2ab(predictEmulate)
-        ble.characteristic.writeValue(data)
-      }, 100)
-
-      return () => clearTimeout(timeId)
-    }
-  }, [ble, predictEmulate])
-
-  useEffect(() => {
-    if (hands && ctx && video) {
-      let isAllowSend = true
-      const sendFrame = async () => {
-        if (isAllowSend) {
-          try {
-            await hands.send({ image: video })
-          } catch (e) {}
-          setTimeout(sendFrame, 100)
-        }
-      }
-
-      const timeId = setTimeout(() => {
-        sendFrame()
-      }, 5000)
-
-      return () => {
-        clearTimeout(timeId)
-        isAllowSend = false
-      }
-    }
-  }, [hands, ctx, video, camDevice])
-
-  useEffect(() => {
-    if (hands && ctx && canvas) {
-      hands.onResults(results => {
-        ctx.save()
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
-
-        if (results.multiHandLandmarks) {
-          const signalNames = Object.keys(signals)
-
-          const predicts = signalNames.reduce((ctx, signalName) => {
-            ctx[signalName] = false
-            return ctx
-          }, {})
-
-          for (const landmarks of results.multiHandLandmarks) {
-            drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2 })
-
-            if (signalNames.length > 0) {
-              signalNames.forEach(signalName => {
-                const signal = signals[signalName]
-
-                const predict = signal.map(stack => {
-                  return stack.points.map(({ x, y, z }, i) => {
-                    const current = landmarks[i]
-
-                    const baseX = stack.points[0].x - x
-                        , baseY = stack.points[0].y - y
-                        , baseZ = stack.points[0].z - z
-                        , baseCX = landmarks[0].x - current.x
-                        , baseCY = landmarks[0].y - current.y
-                        , baseCZ = landmarks[0].z - current.z
-
-                    const offsetX = parseFloat(maxOffsetX) === maxOffsetX - 0 ? ((maxOffsetX - 0) || 0.02) : 0.02
-                        , offsetY = parseFloat(maxOffsetY) === maxOffsetY - 0 ? ((maxOffsetY - 0) || 0.02) : 0.02
-                        , offsetZ = parseFloat(maxOffsetZ) === maxOffsetZ - 0 ? ((maxOffsetZ - 0) || 0.05) : 0.05
-
-                    return (baseX > baseCX - offsetX && baseX < baseCX + offsetX) &&
-                           (baseY > baseCY - offsetY && baseY < baseCY + offsetY) &&
-                           (baseZ > baseCZ - offsetZ && baseZ < baseCZ + offsetZ)
-                  }).find(cancelPoints => cancelPoints === false) !== false
-                })
-
-                const truePredict_ = predict.filter(p => p)
-
-                if (truePredict_.length >= (parseFloat(truePredict) === truePredict - 0 ? ((truePredict - 0) || 3) : 3)) {
-                  predicts[signalName] = true
-                }
-
-                if (truePredict_.length >= (parseFloat(lernTruePredict) === lernTruePredict - 0 ? ((lernTruePredict - 0) || 10) : 10) && isLernSignal) {
-                  setSelectSignal(null)
-                  setSignals(
-                    s => ({
-                      ...s,
-                      [signalName]: [
-                        ...s[signalName],
-                        {
-                          points: landmarks,
-                          date: new Date() - 0
-                        }
-                      ]
-                    })
-                  )
-                }
-              })
-            }
-
-            if (isRecordSignal) {
-              setSignals(
-                s => ({
-                  ...s,
-                  [selectSignal]: [
-                    ...s[selectSignal],
-                    {
-                      points: landmarks,
-                      date: new Date() - 0
-                    }
-                  ]
-                })
-              )
-            }
-          }
-
-          if (signalNames.length > 0) {
-            setSignalPredict(predicts)
-          }
-        }
-
-        ctx.restore()
-      })
-    }
-  }, [hands, ctx, canvas, setSignals, isLernSignal, selectSignal, signals, isRecordSignal, maxOffsetX, maxOffsetY, maxOffsetZ, lernTruePredict, truePredict])
-
-  const connectBle = async () => {
-    const device = await window.navigator.bluetooth.requestDevice({
-      filters: [{ services: [serviceBleDevice || '4fafc201-1fb5-459e-8fcc-c5c9c331914f'] }]
-    })
-
-    const server = await device.gatt.connect()
-        , service = await server.getPrimaryService(serviceBleDevice || '4fafc201-1fb5-459e-8fcc-c5c9c331914f')
-        , characteristic = await service.getCharacteristic(characteristicBleDevice || 'beb5483e-36e1-4688-b7f5-ea07361b26a7')
-
-    device.addEventListener('gattserverdisconnected', () => {
-      setBle(null)
-    })
-
-    setBle({ device, server, service, characteristic })
-  }
 
   const isSignalsCards = Object.keys(signals).map(key => signals[key]).flat().length > 0
 
@@ -422,13 +286,13 @@ const App = () => {
                     maxWidth: '243px'
                   }}
                   onClick={
-                    ble
-                      ? () => ble.server.disconnect()
-                      : () => connectBle()
+                    ble.isConnect
+                      ? () => ble.disconnect()
+                      : () => ble.connect()
                   }
                 >
                   {
-                    ble
+                    ble.isConnect
                       ? 'Disconnect device'
                       : 'Connect device'
                   }
@@ -502,42 +366,58 @@ const App = () => {
         </Panel>
       </PanelsWrapper>
       {
-        isSignalsCards
+        /*isSignalsCards*/ false
           ? (
             <Panel style={{ marginLeft: '0px' }}>
               <PanelTitle>Simulate signals</PanelTitle>
-              <SignalsSimulateWrapper>
-                {
-                  Object.keys(signals).map(signal => (
-                    <Button
-                      key={signal}
-                      onMouseDown={
-                        () => {
-                          setSignalEmulate(
-                            s => ({
-                              ...s,
-                              [signal]: true
-                            })
-                          )
+              <SignalsEmulateWrapper>
+                <>
+                  {
+                    Object.keys(signals).map(signal => (
+                      <Button
+                        key={signal}
+                        onMouseDown={
+                          () => {
+                            setSignalEmulate(
+                              s => ({
+                                ...s,
+                                [signal]: true
+                              })
+                            )
+                          }
                         }
-                      }
-                      onMouseUp={
-                        () => {
-                          setSignalEmulate(
-                            s => ({
-                              ...s,
-                              [signal]: false
-                            })
-                          )
+                        onMouseUp={
+                          () => {
+                            setSignalEmulate(
+                              s => ({
+                                ...s,
+                                [signal]: false
+                              })
+                            )
+                          }
                         }
-                      }
-                      style={{ marginRight: '16px' }}
-                    >
-                      {signal}
-                    </Button>
-                  ))
-                }
-              </SignalsSimulateWrapper>
+                        style={{ marginRight: '16px', marginBottom: '16px' }}
+                      >
+                        {signal}
+                      </Button>
+                    ))
+                  }
+                </>
+                <Button
+                  style={{ marginRight: '16px', marginBottom: '16px' }}
+                  onClick={() => {
+                    const popup = window.open('/signalEmulate', 'Signal Emulate', `scrollbars=no,resizable=no,status=no,location=no,toolbar=no,menubar=no,
+width=100,height=100,left=0,top=0`);
+
+                    setInterval(() => {
+                      popup.postMessage("", 'https://signal.prohetamine.net.com.ru');
+                    }, 1000)
+
+                  }}
+                >
+                  Open mini window
+                </Button>
+              </SignalsEmulateWrapper>
             </Panel>
           )
           : (
@@ -636,4 +516,4 @@ const App = () => {
   )
 }
 
-export default App
+export default _Main
