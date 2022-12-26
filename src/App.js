@@ -17,6 +17,7 @@ import {
   Select,
   VideoWrapper,
   SignalsStorageWrapper,
+  SignalsSimulateWrapper,
   SignalCard,
   SignalCardGhost,
   PredictWrapper,
@@ -43,6 +44,7 @@ const App = () => {
       , [lernSignalTimeout, setLernSignalTimeout] = useLocalStorage('lern-timeout', '')
       , [selectSignal, setSelectSignal] = useState(null)
       , [signalPredict, setSignalPredict] = useState({})
+      , [signalEmulate, setSignalEmulate] = useState({})
       , [signals, setSignals] = useState({})
       , [isMoreSignals, setMoreSignals] = useState(false)
       , [isMoreSettings, setMoreSettings] = useState(false)
@@ -74,6 +76,9 @@ const App = () => {
   const predictString = Object.keys(signalPredict)
     .map(key => `${key}:${signalPredict[key]}`).join(',')+','
 
+  const predictEmulate = Object.keys(signalEmulate)
+    .map(key => `${key}:${signalEmulate[key]}`).join(',')+','
+
   useEffect(() => {
     if (ble) {
       const timeId = setTimeout(() => {
@@ -84,6 +89,17 @@ const App = () => {
       return () => clearTimeout(timeId)
     }
   }, [ble, predictString])
+
+  useEffect(() => {
+    if (ble) {
+      const timeId = setTimeout(() => {
+        const data = str2ab(predictEmulate)
+        ble.characteristic.writeValue(data)
+      }, 100)
+
+      return () => clearTimeout(timeId)
+    }
+  }, [ble, predictEmulate])
 
   useEffect(() => {
     if (hands && ctx && video) {
@@ -345,7 +361,7 @@ const App = () => {
             <PredictWrapper>
             {
               Object.keys(signalPredict).map(signalName => (
-                <Predict key={signalName} style={signalPredict[signalName] ? { background: '#0f0' } : { background: '#eeeeeeaa' }}>{signalName}</Predict>
+                <Predict key={signalName} style={(signalPredict[signalName] || signalEmulate[signalName]) ? { background: '#0f0' } : { background: '#eeeeeeaa' }}>{signalName}</Predict>
               ))
             }
             </PredictWrapper>
@@ -485,6 +501,49 @@ const App = () => {
           </div>
         </Panel>
       </PanelsWrapper>
+      {
+        isSignalsCards
+          ? (
+            <Panel style={{ marginLeft: '0px' }}>
+              <PanelTitle>Simulate signals</PanelTitle>
+              <SignalsSimulateWrapper>
+                {
+                  Object.keys(signals).map(signal => (
+                    <Button
+                      key={signal}
+                      onMouseDown={
+                        () => {
+                          setSignalEmulate(
+                            s => ({
+                              ...s,
+                              [signal]: true
+                            })
+                          )
+                        }
+                      }
+                      onMouseUp={
+                        () => {
+                          setSignalEmulate(
+                            s => ({
+                              ...s,
+                              [signal]: false
+                            })
+                          )
+                        }
+                      }
+                      style={{ marginRight: '16px' }}
+                    >
+                      {signal}
+                    </Button>
+                  ))
+                }
+              </SignalsSimulateWrapper>
+            </Panel>
+          )
+          : (
+            null
+          )
+      }
       <Panel style={{ marginLeft: '0px' }}>
         <PanelTitle>Signals</PanelTitle>
         <SignalsStorageWrapper>

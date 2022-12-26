@@ -406,6 +406,11 @@ const SignalsStorageWrapper = styled.div`
   flex-wrap: wrap;
 `
 
+const SignalsSimulateWrapper = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+`
+
 const SignalCardBody = styled.div`
   width: 166px;
   min-width: 166px;
@@ -738,6 +743,7 @@ export {
   VideoWrapper,
   Select,
   SignalsStorageWrapper,
+  SignalsSimulateWrapper,
   SignalCard,
   SignalCardGhost,
   PredictWrapper,
