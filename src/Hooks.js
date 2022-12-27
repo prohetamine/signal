@@ -144,7 +144,7 @@ const useControllBleDevice = ({ ble, signalEmulate, signalPredict }) => {
   useEffect(() => {
     if (ble.isConnect) {
       const timeId = setTimeout(() => {
-        if (Object.values(signalEmulate).find(value => value)) {
+        if (!!Object.values(signalEmulate).find(value => value)) {
           const predictEmulate = Object.keys(signalEmulate)
             .map(key => `${key}:${signalEmulate[key]}`).join(',')+','
 
