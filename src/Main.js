@@ -366,7 +366,7 @@ const _Main = () => {
         </Panel>
       </PanelsWrapper>
       {
-        /*isSignalsCards*/ false
+        isSignalsCards
           ? (
             <Panel style={{ marginLeft: '0px' }}>
               <PanelTitle>Simulate signals</PanelTitle>
@@ -403,7 +403,7 @@ const _Main = () => {
                     ))
                   }
                 </>
-                <Button
+                {/*<Button
                   style={{ marginRight: '16px', marginBottom: '16px' }}
                   onClick={() => {
                     const popup = window.open('/signalEmulate', 'Signal Emulate', `scrollbars=no,resizable=no,status=no,location=no,toolbar=no,menubar=no,
@@ -412,11 +412,10 @@ width=100,height=100,left=0,top=0`);
                     setInterval(() => {
                       popup.postMessage("", 'https://signal.prohetamine.net.com.ru');
                     }, 1000)
-
                   }}
                 >
                   Open mini window
-                </Button>
+                </Button>*/}
               </SignalsEmulateWrapper>
             </Panel>
           )

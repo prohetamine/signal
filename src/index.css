@@ -6,6 +6,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: radial-gradient(54.78% 89.94% at 49.06% 10.06%, #2DE000 0%, #B3F200 100%);
+  min-height: 100vh;
 }
 
 ::-webkit-scrollbar {
