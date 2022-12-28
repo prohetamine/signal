@@ -46,7 +46,7 @@ const useCameraDevices = () => {
   return devices
 }
 
-const useCamera = device => {
+const useCamera = (device, { width = 1280, height = 720 }) => {
   const videoRef = useRef()
       , [video, setVideo] = useState(null)
 
@@ -55,8 +55,8 @@ const useCamera = device => {
 
     if (video && device) {
       const constraints = {
-        width: 1280,
-        height: 720,
+        width,
+        height,
         deviceId: { exact: device.deviceId }
       }
 
@@ -74,7 +74,7 @@ const useCamera = device => {
           console.log(err)
         })
     }
-  }, [videoRef, device])
+  }, [videoRef, device, width, height])
 
   return [videoRef, video]
 }
@@ -141,25 +141,41 @@ const useBle = ({ service, characteristic }) => {
 }
 
 const useControllBleDevice = ({ ble, signalEmulate, signalPredict }) => {
+  const [isSingnalEmulate, setSingnalEmulate] = useState(false)
+
   useEffect(() => {
-    if (ble.isConnect) {
+    if (!!Object.values(signalEmulate).find(value => value)) {
+      setSingnalEmulate(true)
+    } else {
+      setSingnalEmulate(false)
+    }
+  }, [signalEmulate])
+
+  useEffect(() => {
+    if (ble.isConnect && isSingnalEmulate) {
       const timeId = setTimeout(() => {
-        if (!!Object.values(signalEmulate).find(value => value)) {
-          const predictEmulate = Object.keys(signalEmulate)
+        const predictEmulate = Object.keys(signalEmulate)
             .map(key => `${key}:${signalEmulate[key]}`).join(',')+','
 
-          ble.write(predictEmulate)
-        } else {
-          const predictString = Object.keys(signalPredict)
-            .map(key => `${key}:${signalPredict[key]}`).join(',')+','
-
-          ble.write(predictString)
-        }
+        ble.write(predictEmulate)
       }, 100)
 
       return () => clearTimeout(timeId)
     }
-  }, [ble.isConnect, ble, ble.write, signalEmulate, signalPredict])
+  }, [ble, signalEmulate, isSingnalEmulate])
+
+  useEffect(() => {
+    if (ble.isConnect && !isSingnalEmulate) {
+      const timeId = setTimeout(() => {
+        const predictString = Object.keys(signalPredict)
+          .map(key => `${key}:${signalPredict[key]}`).join(',')+','
+
+        ble.write(predictString)
+      }, 100)
+
+      return () => clearTimeout(timeId)
+    }
+  }, [ble, signalPredict, isSingnalEmulate])
 }
 
 const useFindHandsVideoFrame = ({ hands, ctx, video, camDevice }) => {
@@ -187,12 +203,56 @@ const useFindHandsVideoFrame = ({ hands, ctx, video, camDevice }) => {
   }, [hands, ctx, video, camDevice])
 }
 
-const useMainHook = ({ video, camDevice, ctx, canvas, setSignals, setSignalPredict, setSelectSignal, isLernSignal, selectSignal, signals, isRecordSignal, maxOffsetX, maxOffsetY, maxOffsetZ, lernTruePredict, truePredict }) => {
+const useMainHook = ({
+  maxHands,
+  modelComplexity,
+  minDetectionConfidence,
+  minTrackingConfidence,
+  serviceBleDevice,
+  characteristicBleDevice,
+  camDevices,
+  signalEmulate,
+  signalPredict,
+  camDevice,
+  setSignals,
+  setSignalPredict,
+  setSelectSignal,
+  isLernSignal,
+  selectSignal,
+  signals,
+  isRecordSignal,
+  maxOffsetX,
+  maxOffsetY,
+  maxOffsetZ,
+  lernTruePredict,
+  truePredict
+}) => {
+  const ble = useBle({
+    service: serviceBleDevice,
+    characteristic: characteristicBleDevice
+  })
+
+  useControllBleDevice({
+    ble,
+    signalEmulate,
+    signalPredict
+  })
+
+  const [videoRef, video] = useCamera(camDevices[camDevice], {
+    width: 1280,
+    height: 720
+  })
+
+  const [canvasRef, ctx, canvas] = useCanvas({
+    width: 1280 / 2,
+    height: 720 / 2
+  })
+
   const hands = useHands({
-    maxNumHands: 2,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.8,
-    minTrackingConfidence: 0.8
+    maxNumHands: parseInt(maxHands) === (maxHands - 0) ? parseInt(maxHands) : 2,
+    modelComplexity: parseInt(modelComplexity) === (modelComplexity - 0) ? parseInt(modelComplexity) : 1,
+    minDetectionConfidence: parseFloat(minDetectionConfidence) === (minDetectionConfidence - 0) ? parseFloat(minDetectionConfidence) : 0.8,
+    minTrackingConfidence: parseFloat(minTrackingConfidence) === (minTrackingConfidence - 0) ? parseFloat(minTrackingConfidence) : 0.8
   })
 
   useFindHandsVideoFrame({
@@ -294,15 +354,16 @@ const useMainHook = ({ video, camDevice, ctx, canvas, setSignals, setSignalPredi
       })
     }
   }, [hands, ctx, canvas, setSignals, setSignalPredict, setSelectSignal, isLernSignal, selectSignal, signals, isRecordSignal, maxOffsetX, maxOffsetY, maxOffsetZ, lernTruePredict, truePredict])
+
+  return {
+    videoRef,
+    canvasRef,
+    ble
+  }
 }
 
 export {
   useCameraDevices,
-  useCamera,
   useCanvas,
-  useHands,
-  useBle,
-  useControllBleDevice,
-  useFindHandsVideoFrame,
   useMainHook
 }

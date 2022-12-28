@@ -29,63 +29,52 @@ import {
 
 import {
   useCameraDevices,
-  useCamera,
-  useCanvas,
-  useBle,
-  useControllBleDevice,
   useMainHook
 } from './Hooks'
 
 const _Main = () => {
-  const camDevices = useCameraDevices()
-
   const [signalName, setSignalName] = useState('')
       , [isRecordSignal, setRecordSignal] = useState(false)
       , [recordSignalTimeout, setRecordSignalTimeout] = useLocalStorage('record-timeout', '')
-      , [isLernSignal, setLernSignal] = useState(false)
       , [lernSignalTimeout, setLernSignalTimeout] = useLocalStorage('lern-timeout', '')
-      , [selectSignal, setSelectSignal] = useState(null)
-      , [signalPredict, setSignalPredict] = useState({})
-      , [signalEmulate, setSignalEmulate] = useState({})
-      , [signals, setSignals] = useState({})
-      , [isMoreSignals, setMoreSignals] = useState(false)
-      , [isMoreSettings, setMoreSettings] = useState(false)
       , [maxOffsetX, setMaxOffsetX] = useLocalStorage('max-offset-x', '')
       , [maxOffsetY, setMaxOffsetY] = useLocalStorage('max-offset-y', '')
       , [maxOffsetZ, setMaxOffsetZ] = useLocalStorage('max-offset-z', '')
       , [lernTruePredict, setLernTruePredict] = useLocalStorage('lern-true-predict', '')
       , [truePredict, setTruePredict] = useLocalStorage('true-predict', '')
       , [camDevice, setCamDevice] = useLocalStorage('use-device', 0)
-      , [loadFilename, setLoadFilename] = useState('signals-config.json')
       , [serviceBleDevice, setServiceBleDevice] = useLocalStorage('service-ble-device', '')
       , [characteristicBleDevice, setCharacteristicBleDevice] = useLocalStorage('characteristic-ble-device', '')
+      , [maxHands, setMaxHands] = useLocalStorage('max-hands', '')
+      , [modelComplexity, setModelComplexity] = useLocalStorage('model-complexity', '')
+      , [minDetectionConfidence, setMinDetectionConfidence] = useLocalStorage('min-detection-confidence', '')
+      , [minTrackingConfidence, setMinTrackingConfidence] = useLocalStorage('min-tracking-confidence', '')
+      , [isLernSignal, setLernSignal] = useState(false)
+      , [selectSignal, setSelectSignal] = useState(null)
+      , [signalPredict, setSignalPredict] = useState({})
+      , [signalEmulate, setSignalEmulate] = useState({})
+      , [signals, setSignals] = useState({})
+      , [isMoreSignals, setMoreSignals] = useState(false)
+      , [isMoreSettings, setMoreSettings] = useState(false)
+      , [loadFilename, setLoadFilename] = useState('signals-config.json')
 
-  const ble = useBle({
-    service: serviceBleDevice,
-    characteristic: characteristicBleDevice
-  })
+  const camDevices = useCameraDevices()
 
-  useControllBleDevice({
-    ble,
+  const {
+    videoRef,
+    canvasRef,
+    ble
+  } = useMainHook({
+    maxHands,
+    modelComplexity,
+    minDetectionConfidence,
+    minTrackingConfidence,
+    serviceBleDevice,
+    characteristicBleDevice,
+    camDevices,
     signalEmulate,
-    signalPredict
-  })
-
-  const [videoRef, video] = useCamera(camDevices[camDevice])
-
-  const [canvasRef, ctx, canvas] = useCanvas({
-    width: 1280 / 2,
-    height: 720 / 2
-  })
-
-  useMainHook({
-    video,
+    signalPredict,
     camDevice,
-    ctx,
-    canvas,
-    setSignals,
-    setSignalPredict,
-    setSelectSignal,
     isLernSignal,
     selectSignal,
     signals,
@@ -94,7 +83,10 @@ const _Main = () => {
     maxOffsetY,
     maxOffsetZ,
     lernTruePredict,
-    truePredict
+    truePredict,
+    setSignals,
+    setSignalPredict,
+    setSelectSignal,
   })
 
   const isSignalsCards = Object.keys(signals).map(key => signals[key]).flat().length > 0
@@ -194,6 +186,42 @@ const _Main = () => {
                     value={characteristicBleDevice}
                     onChange={({ target: { value } }) => setCharacteristicBleDevice(value)}
                     placeholder='Characteristic device (default beb5483e-36e1-4688-b7f5-ea07361b26a7)'
+                  />
+                </div>
+                <div style={{ marginBottom: '30px' }}>
+                  <Input
+                    style={{ width: '447px' }}
+                    type='text'
+                    value={maxHands}
+                    onChange={({ target: { value } }) => setMaxHands(value)}
+                    placeholder='Max hands (default 2)'
+                  />
+                </div>
+                <div style={{ marginBottom: '30px' }}>
+                  <Input
+                    style={{ width: '447px' }}
+                    type='text'
+                    value={modelComplexity}
+                    onChange={({ target: { value } }) => setModelComplexity(value)}
+                    placeholder='Model complexity (default 1)'
+                  />
+                </div>
+                <div style={{ marginBottom: '30px' }}>
+                  <Input
+                    style={{ width: '447px' }}
+                    type='text'
+                    value={minDetectionConfidence}
+                    onChange={({ target: { value } }) => setMinDetectionConfidence(value)}
+                    placeholder='Min detection confidence (default 0.8)'
+                  />
+                </div>
+                <div style={{ marginBottom: '30px' }}>
+                  <Input
+                    style={{ width: '447px' }}
+                    type='text'
+                    value={minTrackingConfidence}
+                    onChange={({ target: { value } }) => setMinTrackingConfidence(value)}
+                    placeholder='Min tracking confidence (default 0.8)'
                   />
                 </div>
                 <div>
@@ -429,7 +457,20 @@ width=100,height=100,left=0,top=0`);
           <LoadConfigCard
             onChange={
               ({ json, filename }) => {
-                setSignals(json.signals)
+                json.signals && setSignals(json.signals)
+                json.recordSignalTimeout && setRecordSignalTimeout(json.recordSignalTimeout)
+                json.lernSignalTimeout && setLernSignalTimeout(json.lernSignalTimeout)
+                json.maxOffsetX && setMaxOffsetX(json.maxOffsetX)
+                json.maxOffsetY && setMaxOffsetY(json.maxOffsetY)
+                json.maxOffsetZ && setMaxOffsetZ(json.maxOffsetZ)
+                json.lernTruePredict && setLernTruePredict(json.lernTruePredict)
+                json.truePredict && setTruePredict(json.truePredict)
+                json.serviceBleDevice && setServiceBleDevice(json.serviceBleDevice)
+                json.characteristicBleDevice && setCharacteristicBleDevice(json.characteristicBleDevice)
+                json.maxHands && setMaxHands(json.maxHands)
+                json.modelComplexity && setModelComplexity(json.modelComplexity)
+                json.minDetectionConfidence && setMinDetectionConfidence(json.minDetectionConfidence)
+                json.minTrackingConfidence && setMinTrackingConfidence(json.minTrackingConfidence)
                 setLoadFilename(filename)
               }
             }
@@ -440,6 +481,19 @@ width=100,height=100,left=0,top=0`);
                 <DownloadConfigCard
                   filename={loadFilename}
                   data={{
+                    recordSignalTimeout,
+                    lernSignalTimeout,
+                    maxOffsetX,
+                    maxOffsetY,
+                    maxOffsetZ,
+                    lernTruePredict,
+                    truePredict,
+                    serviceBleDevice,
+                    characteristicBleDevice,
+                    maxHands,
+                    modelComplexity,
+                    minDetectionConfidence,
+                    minTrackingConfidence,
                     signals
                   }}
                 />
