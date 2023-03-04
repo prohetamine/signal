@@ -20,9 +20,15 @@ const router = createBrowserRouter([
 
 const root = document.getElementById("root")
 
-ReactDOM.createRoot(root)
-  .render(
-    <React.StrictMode>
-      <RouterProvider router={router} />
-    </React.StrictMode>
-  )
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(() => {
+      ReactDOM.createRoot(root)
+        .render(
+          <React.StrictMode>
+            <RouterProvider router={router} />
+          </React.StrictMode>
+        )
+    })
+    .catch(e => {
+      document.write('Camera not allow')
+    })
